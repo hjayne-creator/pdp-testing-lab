@@ -50,6 +50,19 @@ export default function App() {
   const [username, setUsername] = useState<string | null>(null);
   const [models, setModels] = useState<ModelOption[]>([]);
   const [settings, setSettings] = useState<LabSettings | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  async function loadLabData() {
+    setLoadError(null);
+    try {
+      const [loadedSettings, loadedModels] = await Promise.all([api.getSettings(), api.listModels()]);
+      setSettings(loadedSettings);
+      setModels(loadedModels);
+    } catch (err) {
+      setSettings(null);
+      setLoadError(err instanceof Error ? err.message : "Failed to load lab settings.");
+    }
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -61,10 +74,7 @@ export default function App() {
         setAuthenticated(session.authenticated);
         setUsername(session.username);
         if (!session.enabled || session.authenticated) {
-          const [loadedSettings, loadedModels] = await Promise.all([api.getSettings(), api.listModels()]);
-          if (!mounted) return;
-          setSettings(loadedSettings);
-          setModels(loadedModels);
+          await loadLabData();
         }
       } catch {
         if (!mounted) return;
@@ -108,10 +118,7 @@ export default function App() {
     return <LoginScreen onLoggedIn={(name) => {
       setAuthenticated(true);
       setUsername(name);
-      Promise.all([api.getSettings(), api.listModels()]).then(([loadedSettings, loadedModels]) => {
-        setSettings(loadedSettings);
-        setModels(loadedModels);
-      });
+      void loadLabData();
     }} />;
   }
 
@@ -127,7 +134,17 @@ export default function App() {
         ) : null}
       </aside>
       <main className="main">
-        {settings ? (
+        {loadError ? (
+          <div className="card">
+            <p className="bad-text">{loadError}</p>
+            <p className="muted small">
+              If you just signed in on production, log out and sign in again so the session cookie is refreshed.
+            </p>
+            <button type="button" className="secondary" style={{ marginTop: 12 }} onClick={() => void loadLabData()}>
+              Retry
+            </button>
+          </div>
+        ) : settings ? (
           <LabPage
             initialSettings={settings}
             models={models}

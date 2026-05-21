@@ -4,7 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import AliasChoices, Field, field_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -57,6 +57,24 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @model_validator(mode="after")
+    def _cross_origin_cookie_defaults(self) -> "Settings":
+        """Frontend and API on different hosts need SameSite=None session cookies."""
+        if not self.auth_password:
+            return self
+        cross_origin = any(
+            origin.startswith("https://")
+            and "localhost" not in origin
+            and "127.0.0.1" not in origin
+            for origin in self.cors_origin_list
+        )
+        if cross_origin:
+            if self.auth_cookie_samesite == "lax":
+                self.auth_cookie_samesite = "none"
+            if not self.auth_cookie_secure:
+                self.auth_cookie_secure = True
+        return self
 
 
 @lru_cache
