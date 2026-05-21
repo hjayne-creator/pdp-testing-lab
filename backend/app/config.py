@@ -4,7 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -32,6 +32,13 @@ class Settings(BaseSettings):
     app_host: str = Field(default="0.0.0.0", validation_alias=AliasChoices("APP_HOST", "HOST"))
     app_port: int = Field(default=8000, validation_alias=AliasChoices("APP_PORT", "PORT"))
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+
+    @field_validator("app_port", mode="before")
+    @classmethod
+    def _coerce_port(cls, value: object) -> object:
+        if value == "" or value is None:
+            return None
+        return value
 
     auth_username: str = "admin"
     auth_password: str | None = None
