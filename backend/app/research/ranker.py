@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 
 from app.adapters.serpapi_client import OrganicResult
 from app.domain_blocklist import normalized_host_matches_allowlist
+from app.research.scrape_limits import manufacturer_host_tokens, pdf_host_is_trusted
 
 
 SOURCE_TIER_MANUFACTURER_PAGE = "manufacturer_page"
@@ -39,11 +40,6 @@ def _looks_like_pdf(url: str, title: str, snippet: str) -> bool:
     return url.lower().endswith(".pdf") or "datasheet" in lower or "spec sheet" in lower or "manual" in lower
 
 
-def _manufacturer_host_hint(manufacturer: str) -> set[str]:
-    tokens = [t for t in manufacturer.lower().replace(",", " ").split() if len(t) >= 4]
-    return set(tokens)
-
-
 def classify_result(
     result: OrganicResult,
     *,
@@ -52,13 +48,23 @@ def classify_result(
 ) -> tuple[str, float]:
     host = host_from_url(result.url)
     host_key = host[4:] if host.startswith("www.") else host
-    mfg_tokens = _manufacturer_host_hint(manufacturer)
+    mfg_tokens = manufacturer_host_tokens(manufacturer)
     title_snippet = f"{result.title} {result.snippet}".lower()
 
-    if any(token in host_key for token in mfg_tokens) or any(token in title_snippet for token in mfg_tokens):
+    host_has_mfg = any(token in host_key for token in mfg_tokens)
+    title_has_mfg = any(token in title_snippet for token in mfg_tokens)
+    if host_has_mfg or title_has_mfg:
         if _looks_like_pdf(result.url, result.title, result.snippet):
-            return SOURCE_TIER_DATASHEET, 100.0
-        return SOURCE_TIER_MANUFACTURER_PAGE, 90.0
+            if pdf_host_is_trusted(
+                result.url,
+                manufacturer=manufacturer,
+                authorized_domains=authorized_domains,
+            ):
+                return SOURCE_TIER_DATASHEET, 100.0
+            return SOURCE_TIER_OTHER, 25.0
+        if host_has_mfg:
+            return SOURCE_TIER_MANUFACTURER_PAGE, 90.0
+        return SOURCE_TIER_OTHER, 35.0
 
     if normalized_host_matches_allowlist(host_key, authorized_domains):
         return SOURCE_TIER_AUTHORIZED_DISTRIBUTOR, 70.0

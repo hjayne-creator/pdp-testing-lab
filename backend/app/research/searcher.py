@@ -11,6 +11,12 @@ from app.models.schemas import SourceRecord
 from app.observability.run_usage import log_external_cost
 from app.research.matcher import assess_product_match, normalize_product_inputs, source_supports_product_match
 from app.research.ranker import MATCH_TRUSTED_TIERS, RankedCandidate, rank_results
+from app.research.scrape_limits import (
+    cap_scraped_markdown,
+    evidence_slice,
+    pdf_host_is_trusted,
+    remote_pdf_byte_size,
+)
 from app.research.ranker import (
     SOURCE_TIER_AUTHORIZED_DISTRIBUTOR,
     SOURCE_TIER_DATASHEET,
@@ -23,9 +29,6 @@ from sqlmodel import Session, select
 from app.models.db import AuthorizedDistributor, BlockedDomain, get_engine
 
 logger = logging.getLogger(__name__)
-
-_EVIDENCE_CHAR_LIMIT = 12_000
-
 
 @dataclass
 class ScrapedSource:
@@ -75,7 +78,11 @@ async def research_product(*, manufacturer: str, mpn: str) -> ResearchBundle:
                 seen_urls.add(result.url)
                 organic.append(result)
 
-    ranked = rank_results(organic, manufacturer=manufacturer, authorized_domains=authorized_keys)
+    ranked = rank_results(
+        organic,
+        manufacturer=manufacturer,
+        authorized_domains=authorized_keys,
+    )
     scraped: list[ScrapedSource] = []
 
     for candidate in ranked:
@@ -84,6 +91,7 @@ async def research_product(*, manufacturer: str, mpn: str) -> ResearchBundle:
             firecrawl=firecrawl,
             manufacturer=manufacturer,
             mpn=mpn,
+            authorized_domains=authorized_keys,
         )
         scraped.append(source)
 
@@ -132,7 +140,7 @@ async def research_product(*, manufacturer: str, mpn: str) -> ResearchBundle:
         ):
             evidence_chunks.append(
                 f"## Source: {source.record.url}\nTier: {source.record.tier}\n\n"
-                f"{source.markdown[:_EVIDENCE_CHAR_LIMIT]}"
+                f"{evidence_slice(source.markdown, settings)}"
             )
     evidence_text = "\n\n---\n\n".join(evidence_chunks)
 
@@ -158,6 +166,7 @@ async def _scrape_candidate(
     firecrawl: FirecrawlClient,
     manufacturer: str,
     mpn: str,
+    authorized_domains: frozenset[str],
 ) -> ScrapedSource:
     settings = get_settings()
     url = candidate.result.url
@@ -188,12 +197,36 @@ async def _scrape_candidate(
         logger.info("Skipping PDF scrape for %s (%s tier)", url, candidate.tier)
         return ScrapedSource(record=record, markdown="")
 
+    if is_pdf_url(url) and not pdf_host_is_trusted(
+        url,
+        manufacturer=manufacturer,
+        authorized_domains=authorized_domains,
+    ):
+        record.error = (
+            "Skipped PDF on untrusted host (manufacturer name in title/path only). "
+            "PDFs are only scraped from manufacturer or authorized-distributor domains."
+        )
+        logger.info("Skipping untrusted-host PDF %s", url)
+        return ScrapedSource(record=record, markdown="")
+
+    if is_pdf_url(url) and settings.research_pdf_max_bytes > 0:
+        byte_size = await remote_pdf_byte_size(url)
+        if byte_size is not None and byte_size > settings.research_pdf_max_bytes:
+            mb = byte_size / (1024 * 1024)
+            cap_mb = settings.research_pdf_max_bytes / (1024 * 1024)
+            record.error = (
+                f"Skipped oversized PDF ({mb:.1f} MB; limit {cap_mb:.1f} MB). "
+                "Large multi-page PDFs are excluded to control token usage."
+            )
+            logger.info("Skipping oversized PDF %s (%s bytes)", url, byte_size)
+            return ScrapedSource(record=record, markdown="")
+
     try:
         response = await firecrawl.scrape(url)
         log_external_cost(
             service="firecrawl", phase="research", units=1, unit_cost_usd=settings.firecrawl_cost_usd
         )
-        markdown = FirecrawlClient.extract_markdown(response)
+        markdown = cap_scraped_markdown(FirecrawlClient.extract_markdown(response), url, settings)
         record.scrape_ok = bool(markdown)
         record.exact_mpn_found = source_supports_product_match(
             markdown,

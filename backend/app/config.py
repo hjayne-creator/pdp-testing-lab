@@ -81,6 +81,15 @@ class Settings(BaseSettings):
     firecrawl_cost_usd: float = 0.01
     max_run_seconds: int = Field(default=180, ge=30)
 
+    research_pdf_max_bytes: int = Field(
+        default=2_000_000,
+        ge=0,
+        description="Skip Firecrawl on PDFs larger than this (HEAD Content-Length). 0 disables.",
+    )
+    research_pdf_max_chars: int = Field(default=25_000, ge=1_000)
+    research_page_max_chars: int = Field(default=50_000, ge=1_000)
+    research_evidence_max_chars: int = Field(default=12_000, ge=1_000)
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
