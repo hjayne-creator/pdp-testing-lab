@@ -1,13 +1,10 @@
 import { RunResult } from "../api/client";
+import { FinalContent } from "./FinalContent";
 
 type RunResultsProps = {
   result: RunResult | null;
   onDownloadReport: () => void;
 };
-
-function looksLikeHtml(content: string): boolean {
-  return /<\/?[a-z][\s\S]*>/i.test(content);
-}
 
 export function RunResults({ result, onDownloadReport }: RunResultsProps) {
   if (!result) return null;
@@ -37,11 +34,7 @@ export function RunResults({ result, onDownloadReport }: RunResultsProps) {
       {result.final_content ? (
         <div>
           <h4>Final WYSIWYG content</h4>
-          {looksLikeHtml(result.final_content) ? (
-            <div className="output-box" dangerouslySetInnerHTML={{ __html: result.final_content }} />
-          ) : (
-            <pre className="output-box output-text">{result.final_content}</pre>
-          )}
+          <FinalContent content={result.final_content} />
         </div>
       ) : null}
 

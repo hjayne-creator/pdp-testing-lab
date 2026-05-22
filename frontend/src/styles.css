@@ -217,6 +217,58 @@ label { display: block; margin: 12px 0 4px; font-size: 13px; color: var(--muted)
   margin: 0;
 }
 
+.markdown-content {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.markdown-content > :first-child { margin-top: 0; }
+.markdown-content > :last-child { margin-bottom: 0; }
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3 {
+  margin: 1em 0 0.5em;
+  line-height: 1.25;
+}
+
+.markdown-content h1 { font-size: 1.5rem; }
+.markdown-content h2 { font-size: 1.25rem; }
+.markdown-content h3 { font-size: 1.1rem; }
+
+.markdown-content p,
+.markdown-content ul,
+.markdown-content ol {
+  margin: 0.5em 0;
+}
+
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 13px;
+}
+
+.markdown-content th,
+.markdown-content td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  text-align: left;
+}
+
+.markdown-content th {
+  background: #f3f4f6;
+  font-weight: 600;
+}
+
+.markdown-content hr {
+  border: none;
+  border-top: 1px solid #ccc;
+  margin: 16px 0;
+}
+
+.markdown-content strong { font-weight: 600; }
+
 .login-screen {
   min-height: 100vh;
   display: grid;
