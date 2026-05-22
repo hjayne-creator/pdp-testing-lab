@@ -38,10 +38,6 @@ export function LabPage({ initialSettings, models, onSettingsChange }: LabPagePr
 
   async function onRun(e: FormEvent) {
     e.preventDefault();
-    if (!styleGuideFile && !settings.style_guide_text.trim()) {
-      setError("Upload a style guide before running.");
-      return;
-    }
     setRunning(true);
     setError(null);
     setResult(null);
@@ -62,7 +58,7 @@ export function LabPage({ initialSettings, models, onSettingsChange }: LabPagePr
 
       if (styleGuideFile) {
         formData.append("style_guide", styleGuideFile);
-      } else {
+      } else if (settings.style_guide_text.trim()) {
         const blob = new Blob([settings.style_guide_text], { type: "text/plain" });
         formData.append("style_guide", blob, settings.style_guide_filename || "style-guide.txt");
       }
@@ -81,7 +77,7 @@ export function LabPage({ initialSettings, models, onSettingsChange }: LabPagePr
       <header className="page-header">
         <div>
           <h2>AI PDP Content Testing Lab</h2>
-          <p className="muted">Enter a manufacturer + MPN, upload a style guide, configure three steps, and run.</p>
+          <p className="muted">Enter a manufacturer + MPN, optionally upload a style guide, configure three steps, and run.</p>
         </div>
       </header>
 
@@ -108,7 +104,7 @@ export function LabPage({ initialSettings, models, onSettingsChange }: LabPagePr
               />
             </div>
           </div>
-          <label htmlFor="style-guide">Style guide upload</label>
+          <label htmlFor="style-guide">Style guide upload (optional)</label>
           <input
             id="style-guide"
             type="file"

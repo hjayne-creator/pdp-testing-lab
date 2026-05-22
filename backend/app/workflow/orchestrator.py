@@ -56,20 +56,7 @@ async def execute_run(payload: RunRequest) -> RunResult:
     deadline = time.monotonic() + settings.max_run_seconds
     raw_style = payload.style_guide_text or ""
     style_guide = style_guide_for_llm(raw_style)
-    style_guide_truncated = len(raw_style) > len(style_guide)
-
-    if not style_guide.strip():
-        return RunResult(
-            status="incomplete",
-            incomplete_reason="Incomplete: style guide upload is required before running.",
-            style_guide_truncated=False,
-            match_verified=False,
-            cost_lines=[],
-            total_cost_usd=0.0,
-            runtime_lines=[],
-            total_runtime_ms=0,
-            audit={"style_guide_missing": True},
-        )
+    style_guide_truncated = bool(raw_style) and len(raw_style) > len(style_guide)
 
     with run_tracking() as (collector, timer):
         timer.start_phase("match_and_research")
@@ -108,12 +95,26 @@ async def execute_run(payload: RunRequest) -> RunResult:
             "manufacturer_data_available": research.manufacturer_data_available,
             "fallback_ecommerce_used": research.fallback_ecommerce_used,
             "style_guide_truncated": style_guide_truncated,
+            "style_guide_provided": bool(style_guide.strip()),
             "normalized_manufacturer": research.normalized_manufacturer,
             "normalized_mpn": research.normalized_mpn,
         }
 
         manufacturer = research.normalized_manufacturer
         mpn = research.normalized_mpn
+
+        style_guide_block = (
+            f"STYLE GUIDE (hard rulebook):\n{style_guide}\n\n"
+            if style_guide.strip()
+            else "STYLE GUIDE: (none provided — use clear, professional PDP structure.)\n\n"
+        )
+
+        context_header = (
+            f"Manufacturer: {manufacturer}\n"
+            f"Manufacturer product number: {mpn}\n\n"
+            f"{style_guide_block}"
+            f"VALIDATED SOURCE EVIDENCE:\n{research.evidence_text}\n"
+        )
 
         if time.monotonic() > deadline:
             return _incomplete(
@@ -136,13 +137,6 @@ async def execute_run(payload: RunRequest) -> RunResult:
                 style_guide_truncated,
                 audit,
             )
-
-        context_header = (
-            f"Manufacturer: {manufacturer}\n"
-            f"Manufacturer product number: {mpn}\n\n"
-            f"STYLE GUIDE (hard rulebook):\n{style_guide}\n\n"
-            f"VALIDATED SOURCE EVIDENCE:\n{research.evidence_text}\n"
-        )
 
         step_outputs: dict[int, str] = {}
         steps = [
