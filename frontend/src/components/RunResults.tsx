@@ -5,6 +5,10 @@ type RunResultsProps = {
   onDownloadReport: () => void;
 };
 
+function looksLikeHtml(content: string): boolean {
+  return /<\/?[a-z][\s\S]*>/i.test(content);
+}
+
 export function RunResults({ result, onDownloadReport }: RunResultsProps) {
   if (!result) return null;
 
@@ -33,7 +37,11 @@ export function RunResults({ result, onDownloadReport }: RunResultsProps) {
       {result.final_content ? (
         <div>
           <h4>Final WYSIWYG content</h4>
-          <div className="output-box" dangerouslySetInnerHTML={{ __html: result.final_content }} />
+          {looksLikeHtml(result.final_content) ? (
+            <div className="output-box" dangerouslySetInnerHTML={{ __html: result.final_content }} />
+          ) : (
+            <pre className="output-box output-text">{result.final_content}</pre>
+          )}
         </div>
       ) : null}
 

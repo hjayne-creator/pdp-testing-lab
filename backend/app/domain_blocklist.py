@@ -19,6 +19,8 @@ DEFAULT_BLOCKED_DOMAIN_SEEDS: tuple[str, ...] = (
     "twitter.com",
     "x.com",
     "wikipedia.org",
+    "archive.org",
+    "worldradiohistory.com",
 )
 
 DEFAULT_AUTHORIZED_DISTRIBUTOR_SEEDS: tuple[str, ...] = (

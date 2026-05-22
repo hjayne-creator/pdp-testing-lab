@@ -5,7 +5,6 @@ from urllib.parse import urlparse
 
 from app.adapters.serpapi_client import OrganicResult
 from app.domain_blocklist import normalized_host_matches_allowlist
-from app.research.matcher import host_from_url
 
 
 SOURCE_TIER_MANUFACTURER_PAGE = "manufacturer_page"
@@ -13,6 +12,19 @@ SOURCE_TIER_DATASHEET = "manufacturer_datasheet"
 SOURCE_TIER_AUTHORIZED_DISTRIBUTOR = "authorized_distributor"
 SOURCE_TIER_ECOMMERCE = "ecommerce"
 SOURCE_TIER_OTHER = "other"
+
+MATCH_TRUSTED_TIERS = frozenset(
+    {
+        SOURCE_TIER_MANUFACTURER_PAGE,
+        SOURCE_TIER_DATASHEET,
+        SOURCE_TIER_AUTHORIZED_DISTRIBUTOR,
+        SOURCE_TIER_ECOMMERCE,
+    }
+)
+
+
+def host_from_url(url: str) -> str:
+    return (urlparse(url).hostname or "").lower()
 
 
 @dataclass

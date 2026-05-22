@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 
 from sqlmodel import Session, select
@@ -25,6 +26,24 @@ SYSTEM_PROMPT = (
     "Never invent unsupported product facts."
 )
 
+_MIN_FINAL_CONTENT_CHARS = 80
+
+
+def _output_is_insufficient(content: str, manufacturer: str, mpn: str) -> bool:
+    stripped = content.strip()
+    if len(stripped) < _MIN_FINAL_CONTENT_CHARS:
+        return True
+    compact = re.sub(r"\s+", " ", stripped.lower())
+    for candidate in {
+        manufacturer.lower().strip(),
+        mpn.lower().strip(),
+        f"{manufacturer} {mpn}".lower().strip(),
+        f"{manufacturer} ({mpn})".lower().strip(),
+    }:
+        if candidate and compact == candidate:
+            return True
+    return False
+
 
 def _model_provider(model_id: str) -> str:
     with Session(get_engine()) as session:
@@ -38,6 +57,19 @@ async def execute_run(payload: RunRequest) -> RunResult:
     raw_style = payload.style_guide_text or ""
     style_guide = style_guide_for_llm(raw_style)
     style_guide_truncated = len(raw_style) > len(style_guide)
+
+    if not style_guide.strip():
+        return RunResult(
+            status="incomplete",
+            incomplete_reason="Incomplete: style guide upload is required before running.",
+            style_guide_truncated=False,
+            match_verified=False,
+            cost_lines=[],
+            total_cost_usd=0.0,
+            runtime_lines=[],
+            total_runtime_ms=0,
+            audit={"style_guide_missing": True},
+        )
 
     with run_tracking() as (collector, timer):
         timer.start_phase("match_and_research")
@@ -76,7 +108,12 @@ async def execute_run(payload: RunRequest) -> RunResult:
             "manufacturer_data_available": research.manufacturer_data_available,
             "fallback_ecommerce_used": research.fallback_ecommerce_used,
             "style_guide_truncated": style_guide_truncated,
+            "normalized_manufacturer": research.normalized_manufacturer,
+            "normalized_mpn": research.normalized_mpn,
         }
+
+        manufacturer = research.normalized_manufacturer
+        mpn = research.normalized_mpn
 
         if time.monotonic() > deadline:
             return _incomplete(
@@ -101,8 +138,8 @@ async def execute_run(payload: RunRequest) -> RunResult:
             )
 
         context_header = (
-            f"Manufacturer: {payload.manufacturer_name}\n"
-            f"Manufacturer product number: {payload.manufacturer_product_number}\n\n"
+            f"Manufacturer: {manufacturer}\n"
+            f"Manufacturer product number: {mpn}\n\n"
             f"STYLE GUIDE (hard rulebook):\n{style_guide}\n\n"
             f"VALIDATED SOURCE EVIDENCE:\n{research.evidence_text}\n"
         )
@@ -171,14 +208,27 @@ async def execute_run(payload: RunRequest) -> RunResult:
         runtime_lines, total_runtime = build_runtime_report(timer)
         final_content = step_outputs.get(3, "").strip()
 
+        if _output_is_insufficient(final_content, manufacturer, mpn):
+            return _incomplete(
+                "Source evidence was insufficient to satisfy the required prompt output safely.",
+                source_records,
+                collector,
+                timer,
+                payload,
+                style_guide_truncated,
+                audit,
+                step_outputs.get(1),
+                step_outputs.get(2),
+            )
+
         steps_config = [
             {"name": payload.step1.name, "model": payload.step1.model, "prompt": payload.step1.prompt},
             {"name": payload.step2.name, "model": payload.step2.model, "prompt": payload.step2.prompt},
             {"name": payload.step3.name, "model": payload.step3.model, "prompt": payload.step3.prompt},
         ]
         report_html = render_internal_report(
-            manufacturer=payload.manufacturer_name,
-            mpn=payload.manufacturer_product_number,
+            manufacturer=manufacturer,
+            mpn=mpn,
             style_guide_filename=payload.style_guide_filename,
             style_guide_truncated=style_guide_truncated,
             steps=steps_config,
