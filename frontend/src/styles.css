@@ -70,6 +70,74 @@ label { display: block; margin: 12px 0 4px; font-size: 13px; color: var(--muted)
   font-size: 18px;
 }
 
+.sidebar-about {
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.sidebar-about summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  list-style: none;
+}
+
+.sidebar-about summary::-webkit-details-marker {
+  display: none;
+}
+
+.sidebar-about summary::before {
+  content: "▸ ";
+  color: var(--muted);
+}
+
+.sidebar-about[open] summary::before {
+  content: "▾ ";
+}
+
+.sidebar-about-body {
+  margin-top: 10px;
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.sidebar-about-body p {
+  margin: 0 0 10px;
+}
+
+.sidebar-about-body ol,
+.sidebar-about-body ul {
+  margin: 0 0 10px;
+  padding-left: 18px;
+}
+
+.sidebar-about-body li {
+  margin-bottom: 8px;
+}
+
+.sidebar-about-body strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.sidebar-about-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  margin-bottom: 6px !important;
+}
+
+.sidebar-footer {
+  margin-top: 16px;
+}
+
 .main {
   padding: 24px 32px 48px;
 }

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -25,6 +27,11 @@ app.add_middleware(
 @app.on_event("startup")
 async def _startup() -> None:
     init_db()
+    if not settings_cfg.serpapi_api_key:
+        logging.getLogger(__name__).warning(
+            "SERPAPI_API_KEY is not set. %s",
+            settings_cfg.missing_api_key_hint("SERPAPI_API_KEY"),
+        )
 
 
 @app.get("/health")

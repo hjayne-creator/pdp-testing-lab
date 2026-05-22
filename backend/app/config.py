@@ -8,11 +8,18 @@ from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
+_REPO_ROOT = _BACKEND_DIR.parent
+
+
+def _discover_env_files() -> tuple[Path, ...]:
+    """Load repo-root .env first, then backend/.env (later file wins)."""
+    candidates = (_REPO_ROOT / ".env", _BACKEND_DIR / ".env")
+    return tuple(p for p in candidates if p.is_file())
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=_BACKEND_DIR / ".env",
+        env_file=_discover_env_files(),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -23,6 +30,26 @@ class Settings(BaseSettings):
     xai_api_key: str | None = None
     serpapi_api_key: str | None = None
     firecrawl_api_key: str | None = None
+
+    @staticmethod
+    def _coerce_blank_api_key(value: object) -> object:
+        if value is None:
+            return None
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+    @field_validator(
+        "openai_api_key",
+        "anthropic_api_key",
+        "xai_api_key",
+        "serpapi_api_key",
+        "firecrawl_api_key",
+        mode="before",
+    )
+    @classmethod
+    def _normalize_api_keys(cls, value: object) -> object:
+        return cls._coerce_blank_api_key(value)
     firecrawl_wait_for_ms: int | None = Field(default=None, ge=0)
     firecrawl_timeout_ms: int = Field(default=120_000, ge=5_000)
     firecrawl_pdf_timeout_ms: int = Field(default=300_000, ge=10_000)
@@ -57,6 +84,23 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def env_file_paths(self) -> list[Path]:
+        return list(_discover_env_files())
+
+    def missing_api_key_hint(self, env_name: str) -> str:
+        paths = self.env_file_paths
+        parts = [
+            f"Set {env_name} in backend/.env or the repository root .env for local development.",
+            "On Railway or other hosts, add the variable in the service dashboard — .env files are not deployed.",
+            "Restart the backend after changing local .env files.",
+        ]
+        if paths:
+            parts.append(f"Loaded env files: {', '.join(str(p) for p in paths)}.")
+        else:
+            parts.append(f"No .env found at {_BACKEND_DIR / '.env'} or {_REPO_ROOT / '.env'}.")
+        return " ".join(parts)
 
     @model_validator(mode="after")
     def _cross_origin_cookie_defaults(self) -> "Settings":

@@ -56,7 +56,9 @@ class SerpapiClient:
         blocked_hosts: Sequence[str] = (),
     ) -> list[OrganicResult]:
         if not self.configured:
-            raise SerpapiError("SERPAPI_API_KEY is not configured")
+            raise SerpapiError(
+                "SERPAPI_API_KEY is not configured. " + get_settings().missing_api_key_hint("SERPAPI_API_KEY")
+            )
 
         suffix = _blocked_sites_query_suffix(tuple(blocked_hosts))
         q = f"{query} {suffix}".strip()

@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { api, LabSettings, ModelOption } from "./api/client";
+import { AboutThisApp } from "./components/AboutThisApp";
 import { LabPage } from "./pages/Lab";
 
 function LoginScreen({ onLoggedIn }: { onLoggedIn: (username: string | null) => void }) {
@@ -127,8 +128,9 @@ export default function App() {
       <aside className="sidebar">
         <h1 className="brand">PDP Testing Lab</h1>
         <p className="muted small">{username ? `Signed in as ${username}` : "Internal prompt lab"}</p>
+        <AboutThisApp />
         {authEnabled ? (
-          <div style={{ marginTop: 16 }}>
+          <div className="sidebar-footer">
             <button className="secondary" onClick={handleLogout}>Log out</button>
           </div>
         ) : null}
