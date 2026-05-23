@@ -80,6 +80,8 @@ class Settings(BaseSettings):
     serpapi_cost_usd: float = 0.01
     firecrawl_cost_usd: float = 0.01
     max_run_seconds: int = Field(default=180, ge=30)
+    run_history_max_count: int = Field(default=100, ge=1)
+    run_history_max_age_days: int = Field(default=30, ge=0)
 
     research_pdf_max_bytes: int = Field(
         default=2_000_000,

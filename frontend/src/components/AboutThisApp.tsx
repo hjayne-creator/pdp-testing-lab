@@ -21,6 +21,10 @@ export function AboutThisApp() {
             <strong>Results</strong> — Final content, intermediate outputs, sources, cost, runtime, and a
             downloadable internal report.
           </li>
+          <li>
+            <strong>Run history</strong> — Past runs are saved locally so you can reopen results without
+            re-running the pipeline.
+          </li>
         </ol>
         <p className="sidebar-about-label">Guardrails</p>
         <ul>

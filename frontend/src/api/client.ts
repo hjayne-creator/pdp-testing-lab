@@ -49,17 +49,43 @@ export type CostLine = {
 
 export type RuntimeLine = { phase: string; duration_ms: number };
 
+export type SourceRecord = {
+  url: string;
+  title: string;
+  tier: string;
+  domain: string;
+  exact_mpn_found: boolean;
+  scrape_ok: boolean;
+  error?: string | null;
+};
+
 export type RunResult = {
   status: "complete" | "incomplete";
   incomplete_reason?: string | null;
   final_content?: string | null;
   style_guide_truncated: boolean;
   match_verified: boolean;
+  sources?: SourceRecord[];
   cost_lines: CostLine[];
   total_cost_usd: number;
   runtime_lines: RuntimeLine[];
   total_runtime_ms: number;
+  step1_output?: string | null;
+  step2_output?: string | null;
   internal_report_html?: string | null;
+};
+
+export type RunSummary = {
+  id: number;
+  created_at: string;
+  manufacturer_name: string;
+  manufacturer_product_number: string;
+  status: "complete" | "incomplete";
+  match_verified: boolean;
+  incomplete_reason?: string | null;
+  total_cost_usd: number;
+  total_runtime_ms: number;
+  style_guide_filename: string;
 };
 
 export const api = {
@@ -81,6 +107,15 @@ export const api = {
   listModels: () => request<ModelOption[]>("/models"),
   runLab: (formData: FormData) =>
     request<RunResult>("/lab/run-with-upload", { method: "POST", body: formData }),
+  listRuns: (params?: { limit?: number; offset?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    if (params?.offset != null) q.set("offset", String(params.offset));
+    const qs = q.toString();
+    return request<{ runs: RunSummary[]; total: number }>(`/lab/runs${qs ? `?${qs}` : ""}`);
+  },
+  getRun: (id: number) => request<RunResult>(`/lab/runs/${id}`),
+  deleteRun: (id: number) => request<void>(`/lab/runs/${id}`, { method: "DELETE" }),
 };
 
 export function downloadReport(html: string) {

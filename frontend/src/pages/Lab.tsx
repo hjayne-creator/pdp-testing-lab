@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { api, downloadReport, LabSettings, ModelOption, RunResult } from "../api/client";
+import { RunHistory } from "../components/RunHistory";
 import { RunResults } from "../components/RunResults";
 import { StepEditor } from "../components/StepEditor";
 
@@ -15,6 +16,9 @@ export function LabPage({ initialSettings, models, onSettingsChange }: LabPagePr
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<RunResult | null>(null);
+  const [selectedHistoryId, setSelectedHistoryId] = useState<number | null>(null);
+  const [historyRefresh, setHistoryRefresh] = useState(0);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   function patchSettings(patch: Partial<LabSettings>) {
     const next = { ...settings, ...patch };
@@ -41,6 +45,7 @@ export function LabPage({ initialSettings, models, onSettingsChange }: LabPagePr
     setRunning(true);
     setError(null);
     setResult(null);
+    setSelectedHistoryId(null);
     try {
       await persistSettings(settings);
       const formData = new FormData();
@@ -65,10 +70,25 @@ export function LabPage({ initialSettings, models, onSettingsChange }: LabPagePr
 
       const runResult = await api.runLab(formData);
       setResult(runResult);
+      setHistoryRefresh((k) => k + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Run failed.");
     } finally {
       setRunning(false);
+    }
+  }
+
+  async function onSelectHistoryRun(id: number) {
+    setHistoryLoading(true);
+    setError(null);
+    try {
+      const loaded = await api.getRun(id);
+      setResult(loaded);
+      setSelectedHistoryId(id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load run.");
+    } finally {
+      setHistoryLoading(false);
     }
   }
 
@@ -165,8 +185,17 @@ export function LabPage({ initialSettings, models, onSettingsChange }: LabPagePr
         </div>
       </form>
 
+      <RunHistory
+        refreshKey={historyRefresh}
+        selectedId={selectedHistoryId}
+        onSelect={(id) => void onSelectHistoryRun(id)}
+      />
+
+      {historyLoading ? <p className="muted small">Loading run from history…</p> : null}
+
       <RunResults
         result={result}
+        fromHistory={selectedHistoryId != null}
         onDownloadReport={() => {
           if (result?.internal_report_html) downloadReport(result.internal_report_html);
         }}

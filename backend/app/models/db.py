@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import JSON
+from sqlalchemy import JSON, Column
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 from app.config import get_settings
@@ -75,6 +75,21 @@ class ServicePriceCard(SQLModel, table=True):
     unit_label: str = "call"
     cost_per_unit_usd: float = 0.0
     active: bool = True
+
+
+class LabRun(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    created_at: datetime = Field(default_factory=_now, index=True)
+    manufacturer_name: str = ""
+    manufacturer_product_number: str = ""
+    status: str = ""
+    match_verified: bool = False
+    incomplete_reason: Optional[str] = None
+    total_cost_usd: float = 0.0
+    total_runtime_ms: int = 0
+    style_guide_filename: str = ""
+    style_guide_hash: Optional[str] = None
+    result_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
 
 
 _engine = None

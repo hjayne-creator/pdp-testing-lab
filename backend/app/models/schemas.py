@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -95,6 +96,24 @@ class LabSettingsUpdate(BaseModel):
     step3_name: str | None = None
     step3_prompt: str | None = None
     step3_model: str | None = None
+
+
+class RunSummary(BaseModel):
+    id: int
+    created_at: datetime
+    manufacturer_name: str
+    manufacturer_product_number: str
+    status: Literal["complete", "incomplete"]
+    match_verified: bool
+    incomplete_reason: str | None = None
+    total_cost_usd: float
+    total_runtime_ms: int
+    style_guide_filename: str = ""
+
+
+class RunListResponse(BaseModel):
+    runs: list[RunSummary]
+    total: int
 
 
 class ModelOption(BaseModel):

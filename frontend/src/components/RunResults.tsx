@@ -3,10 +3,11 @@ import { FinalContent } from "./FinalContent";
 
 type RunResultsProps = {
   result: RunResult | null;
+  fromHistory?: boolean;
   onDownloadReport: () => void;
 };
 
-export function RunResults({ result, onDownloadReport }: RunResultsProps) {
+export function RunResults({ result, fromHistory, onDownloadReport }: RunResultsProps) {
   if (!result) return null;
 
   const overBudget = result.total_cost_usd > 0.1;
@@ -19,6 +20,10 @@ export function RunResults({ result, onDownloadReport }: RunResultsProps) {
           <span className={`status-pill ${result.status === "complete" ? "good" : "bad"}`}>
             {result.status}
           </span>
+          {fromHistory ? <span className="small muted" style={{ marginLeft: 8 }}>from history</span> : null}
+          {result.match_verified === false ? (
+            <span className="small warn-text" style={{ marginLeft: 8 }}>match not verified</span>
+          ) : null}
         </div>
         <button className="secondary" onClick={onDownloadReport}>Download internal report</button>
       </div>
@@ -36,6 +41,49 @@ export function RunResults({ result, onDownloadReport }: RunResultsProps) {
           <h4>Final WYSIWYG content</h4>
           <FinalContent content={result.final_content} />
         </div>
+      ) : null}
+
+      {result.sources && result.sources.length > 0 ? (
+        <>
+          <h4>Sources</h4>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Tier</th>
+                <th>URL</th>
+                <th>MPN match</th>
+                <th>Scraped</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.sources.map((s, idx) => (
+                <tr key={idx}>
+                  <td>{s.tier}</td>
+                  <td>
+                    <a href={s.url} target="_blank" rel="noreferrer">
+                      {s.title || s.url}
+                    </a>
+                  </td>
+                  <td>{s.exact_mpn_found ? "yes" : "no"}</td>
+                  <td>{s.scrape_ok ? "yes" : s.error || "no"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      ) : null}
+
+      {result.step1_output ? (
+        <details className="step-output-details">
+          <summary>Step 1 output</summary>
+          <pre className="output-text step-output-pre">{result.step1_output}</pre>
+        </details>
+      ) : null}
+      {result.step2_output ? (
+        <details className="step-output-details">
+          <summary>Step 2 output</summary>
+          <pre className="output-text step-output-pre">{result.step2_output}</pre>
+        </details>
       ) : null}
 
       <h4>Cost report</h4>

@@ -10,6 +10,7 @@ from app.api import admin, auth, lab, models, settings
 from app.api.auth import SESSION_COOKIE_NAME, is_auth_enabled, verify_session_token
 from app.config import get_settings
 from app.models.db import init_db
+from app.repositories.run_history import prune_runs
 
 settings_cfg = get_settings()
 
@@ -27,6 +28,7 @@ app.add_middleware(
 @app.on_event("startup")
 async def _startup() -> None:
     init_db()
+    prune_runs()
     if not settings_cfg.serpapi_api_key:
         logging.getLogger(__name__).warning(
             "SERPAPI_API_KEY is not set. %s",
