@@ -153,8 +153,9 @@ def init_db() -> None:
         existing_models = {r.model_id for r in session.exec(select(ModelCatalogEntry)).all()}
         default_models = [
             ("gpt-5", "GPT-5", "openai", "OpenAI flagship model.", 1),
-            ("claude-sonnet-4-6", "Claude Sonnet 4.6", "anthropic", "Anthropic mid-tier model.", 2),
-            ("grok-4-1-fast-reasoning", "Grok 4.1 Fast (reasoning)", "xai", "xAI reasoning model.", 3),
+            ("gpt-5-mini", "GPT-5 mini", "openai", "Faster, cost-efficient GPT-5 for high-volume tasks.", 2),
+            ("claude-sonnet-4-6", "Claude Sonnet 4.6", "anthropic", "Anthropic mid-tier model.", 3),
+            ("grok-4-1-fast-reasoning", "Grok 4.1 Fast (reasoning)", "xai", "xAI reasoning model.", 4),
         ]
         for model_id, label, provider, description, sort_order in default_models:
             if model_id not in existing_models:
@@ -168,15 +169,25 @@ def init_db() -> None:
                     )
                 )
 
-        existing_prices = session.exec(select(LLMPriceCard)).first()
-        if existing_prices is None:
-            session.add_all(
-                [
-                    LLMPriceCard(provider="openai", model="gpt-5", input_per_million_usd=2.50, output_per_million_usd=10.0),
-                    LLMPriceCard(provider="anthropic", model="claude-sonnet-4-6", input_per_million_usd=3.0, output_per_million_usd=15.0),
-                    LLMPriceCard(provider="xai", model="grok-4-1-fast-reasoning", input_per_million_usd=1.25, output_per_million_usd=2.50),
-                ]
-            )
+        existing_price_models = {
+            (r.provider, r.model) for r in session.exec(select(LLMPriceCard)).all()
+        }
+        default_model_prices = [
+            ("openai", "gpt-5", 2.50, 10.0),
+            ("openai", "gpt-5-mini", 0.25, 2.0),
+            ("anthropic", "claude-sonnet-4-6", 3.0, 15.0),
+            ("xai", "grok-4-1-fast-reasoning", 1.25, 2.50),
+        ]
+        for provider, model, input_per_million_usd, output_per_million_usd in default_model_prices:
+            if (provider, model) not in existing_price_models:
+                session.add(
+                    LLMPriceCard(
+                        provider=provider,
+                        model=model,
+                        input_per_million_usd=input_per_million_usd,
+                        output_per_million_usd=output_per_million_usd,
+                    )
+                )
 
         settings = get_settings()
         existing_service = {r.service for r in session.exec(select(ServicePriceCard)).all()}
