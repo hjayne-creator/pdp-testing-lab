@@ -23,6 +23,7 @@ class LabSettings(SQLModel, table=True):
     id: Optional[int] = Field(default=1, primary_key=True)
     manufacturer_name: str = ""
     manufacturer_product_number: str = ""
+    product_family_hint: str = ""
     style_guide_filename: str = ""
     style_guide_text: str = ""
     step1_name: str = "Research"
@@ -92,6 +93,13 @@ class LabRun(SQLModel, table=True):
     result_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
 
 
+class ResearchSession(SQLModel, table=True):
+    id: str = Field(primary_key=True)
+    created_at: datetime = Field(default_factory=_now, index=True)
+    expires_at: datetime = Field(index=True)
+    payload: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+
+
 _engine = None
 
 
@@ -104,8 +112,11 @@ def get_engine():
     return _engine
 
 
-DEFAULT_STEP1_PROMPT = """Review the validated source evidence for the exact product identified below.
-Summarize only facts that are clearly supported by the provided sources for this exact manufacturer product number.
+DEFAULT_STEP1_PROMPT = """Review the validated source evidence for the product identified below.
+Summarize only facts that are clearly supported by the provided sources.
+For exact-manufacturer matches, focus on this exact manufacturer product number.
+For family/series matches, do not attribute family-level facts to the exact SKU unless the MPN appears in the evidence.
+For competitor-proxy matches, treat evidence as competitive analogs — do not claim OEM specifications.
 Do not add assumptions, category norms, or unsupported claims.
 Flag any ambiguous variant-grouped content that should be excluded.
 
@@ -124,9 +135,22 @@ Ensure the style guide is fully respected.
 Return only the final WYSIWYG content with no citations or research notes."""
 
 
+def _migrate_lab_settings_columns(engine) -> None:
+    """Add columns introduced after initial deploy (SQLite-safe)."""
+    if not str(engine.url).startswith("sqlite"):
+        return
+    with engine.connect() as conn:
+        rows = conn.exec_driver_sql("PRAGMA table_info(labsettings)").fetchall()
+        columns = {row[1] for row in rows}
+        if "product_family_hint" not in columns:
+            conn.exec_driver_sql("ALTER TABLE labsettings ADD COLUMN product_family_hint TEXT DEFAULT ''")
+            conn.commit()
+
+
 def init_db() -> None:
     engine = get_engine()
     SQLModel.metadata.create_all(engine)
+    _migrate_lab_settings_columns(engine)
     with Session(engine) as session:
         if session.get(LabSettings, 1) is None:
             session.add(

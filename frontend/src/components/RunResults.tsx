@@ -24,6 +24,9 @@ export function RunResults({ result, fromHistory, onDownloadReport }: RunResults
           {result.match_verified === false ? (
             <span className="small warn-text" style={{ marginLeft: 8 }}>match not verified</span>
           ) : null}
+          {result.audit?.research_tier ? (
+            <span className="small muted" style={{ marginLeft: 8 }}>tier: {String(result.audit.research_tier)}</span>
+          ) : null}
         </div>
         <button className="secondary" onClick={onDownloadReport}>Download internal report</button>
       </div>

@@ -73,6 +73,8 @@ def render_internal_report(
   <p class="{'ok' if match_verified else 'bad'}">
     {'Verified' if match_verified else esc(incomplete_reason or 'Not verified')}
   </p>
+  <p><strong>Research tier:</strong> {esc(str(audit.get('research_tier', '')))}<br/>
+     <strong>Tier reason:</strong> {esc(str(audit.get('research_tier_reason', '')))}</p>
 
   <h2>Configured steps</h2>
   {step_blocks}

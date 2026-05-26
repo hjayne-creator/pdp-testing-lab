@@ -32,6 +32,7 @@ def get_settings_state() -> LabSettingsResponse:
         return LabSettingsResponse(
             manufacturer_name=row.manufacturer_name,
             manufacturer_product_number=row.manufacturer_product_number,
+            product_family_hint=getattr(row, "product_family_hint", "") or "",
             style_guide_filename=row.style_guide_filename,
             style_guide_text=row.style_guide_text,
             step1_name=row.step1_name,
@@ -59,6 +60,7 @@ def update_settings_state(payload: LabSettingsUpdate) -> LabSettingsResponse:
         return LabSettingsResponse(
             manufacturer_name=row.manufacturer_name,
             manufacturer_product_number=row.manufacturer_product_number,
+            product_family_hint=getattr(row, "product_family_hint", "") or "",
             style_guide_filename=row.style_guide_filename,
             style_guide_text=row.style_guide_text,
             step1_name=row.step1_name,

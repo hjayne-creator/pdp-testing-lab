@@ -12,7 +12,15 @@ SOURCE_TIER_MANUFACTURER_PAGE = "manufacturer_page"
 SOURCE_TIER_DATASHEET = "manufacturer_datasheet"
 SOURCE_TIER_AUTHORIZED_DISTRIBUTOR = "authorized_distributor"
 SOURCE_TIER_ECOMMERCE = "ecommerce"
+SOURCE_TIER_COMPETITOR = "competitor_page"
 SOURCE_TIER_OTHER = "other"
+
+MANUFACTURER_SOURCE_TIERS = frozenset(
+    {
+        SOURCE_TIER_MANUFACTURER_PAGE,
+        SOURCE_TIER_DATASHEET,
+    }
+)
 
 MATCH_TRUSTED_TIERS = frozenset(
     {
@@ -20,6 +28,7 @@ MATCH_TRUSTED_TIERS = frozenset(
         SOURCE_TIER_DATASHEET,
         SOURCE_TIER_AUTHORIZED_DISTRIBUTOR,
         SOURCE_TIER_ECOMMERCE,
+        SOURCE_TIER_COMPETITOR,
     }
 )
 
@@ -89,6 +98,44 @@ def rank_results(
             continue
         seen_urls.add(result.url)
         tier, score = classify_result(result, manufacturer=manufacturer, authorized_domains=authorized_domains)
+        ranked.append(RankedCandidate(result=result, tier=tier, score=score))
+    ranked.sort(key=lambda c: (-c.score, c.result.position))
+    return ranked[:limit]
+
+
+def classify_competitor_result(
+    result: OrganicResult,
+    *,
+    manufacturer: str,
+) -> tuple[str, float]:
+    """Rank competitor/alternative pages, excluding manufacturer hosts."""
+    host = host_from_url(result.url)
+    host_key = host[4:] if host.startswith("www.") else host
+    mfg_tokens = manufacturer_host_tokens(manufacturer)
+    if any(token in host_key for token in mfg_tokens):
+        return SOURCE_TIER_OTHER, 0.0
+    title_snippet = f"{result.title} {result.snippet}".lower()
+    score = 45.0
+    if any(token in title_snippet for token in ("buy", "shop", "price", "in stock", "add to cart", "product")):
+        score += 15.0
+    return SOURCE_TIER_COMPETITOR, score
+
+
+def rank_competitor_results(
+    results: list[OrganicResult],
+    *,
+    manufacturer: str,
+    limit: int = 3,
+) -> list[RankedCandidate]:
+    ranked: list[RankedCandidate] = []
+    seen_urls: set[str] = set()
+    for result in results:
+        if result.url in seen_urls:
+            continue
+        seen_urls.add(result.url)
+        tier, score = classify_competitor_result(result, manufacturer=manufacturer)
+        if tier == SOURCE_TIER_OTHER:
+            continue
         ranked.append(RankedCandidate(result=result, tier=tier, score=score))
     ranked.sort(key=lambda c: (-c.score, c.result.position))
     return ranked[:limit]

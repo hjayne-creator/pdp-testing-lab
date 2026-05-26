@@ -22,6 +22,7 @@ export type ModelOption = { id: string; label: string; provider: string; descrip
 export type LabSettings = {
   manufacturer_name: string;
   manufacturer_product_number: string;
+  product_family_hint: string;
   style_guide_filename: string;
   style_guide_text: string;
   step1_name: string;
@@ -55,8 +56,29 @@ export type SourceRecord = {
   tier: string;
   domain: string;
   exact_mpn_found: boolean;
+  family_match_found?: boolean;
+  competitor_match_found?: boolean;
   scrape_ok: boolean;
   error?: string | null;
+};
+
+export type ResearchPreviewResponse = {
+  research_session_id: string;
+  status: "ready" | "incomplete";
+  research_tier: string;
+  research_tier_reason: string;
+  match_verified: boolean;
+  incomplete_reason?: string | null;
+  manufacturer_name: string;
+  manufacturer_product_number: string;
+  product_family_hint: string;
+  sources: SourceRecord[];
+  evidence_text: string;
+  cost_lines: CostLine[];
+  total_cost_usd: number;
+  runtime_lines: RuntimeLine[];
+  total_runtime_ms: number;
+  audit: Record<string, unknown>;
 };
 
 export type RunResult = {
@@ -73,6 +95,7 @@ export type RunResult = {
   step1_output?: string | null;
   step2_output?: string | null;
   internal_report_html?: string | null;
+  audit?: Record<string, unknown>;
 };
 
 export type RunSummary = {
@@ -86,6 +109,12 @@ export type RunSummary = {
   total_cost_usd: number;
   total_runtime_ms: number;
   style_guide_filename: string;
+};
+
+export type StepConfigPayload = {
+  name: string;
+  prompt: string;
+  model: string;
 };
 
 export const api = {
@@ -105,6 +134,29 @@ export const api = {
       body: JSON.stringify(body),
     }),
   listModels: () => request<ModelOption[]>("/models"),
+  researchLab: (body: {
+    manufacturer_name: string;
+    manufacturer_product_number: string;
+    product_family_hint?: string;
+  }) =>
+    request<ResearchPreviewResponse>("/lab/research", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  continueLab: (body: {
+    research_session_id: string;
+    style_guide_text: string;
+    style_guide_filename?: string;
+    step1: StepConfigPayload;
+    step2: StepConfigPayload;
+    step3: StepConfigPayload;
+  }) =>
+    request<RunResult>("/lab/run/continue", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
   runLab: (formData: FormData) =>
     request<RunResult>("/lab/run-with-upload", { method: "POST", body: formData }),
   listRuns: (params?: { limit?: number; offset?: number }) => {

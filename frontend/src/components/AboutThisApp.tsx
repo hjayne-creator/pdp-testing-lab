@@ -10,8 +10,11 @@ export function AboutThisApp() {
         <p className="sidebar-about-label">How a run works</p>
         <ol>
           <li>
-            <strong>Research</strong> — Search and scrape the web, rank sources (manufacturer, datasheet,
-            distributors), and verify the product match.
+            <strong>Research</strong> — Search and scrape the web using a three-tier hierarchy: exact MPN on
+            the manufacturer site, then family/series (with your optional hint), then 1–3 competitor pages.
+          </li>
+          <li>
+            <strong>Review</strong> — Research results (sources, tier, evidence) are shown before any LLM steps run.
           </li>
           <li>
             <strong>Three LLM steps</strong> — Default: Research, Writing, Fact-check and edit. Each step uses
@@ -28,7 +31,7 @@ export function AboutThisApp() {
         </ol>
         <p className="sidebar-about-label">Guardrails</p>
         <ul>
-          <li>Runs stop if the product match cannot be verified.</li>
+          <li>LLM steps only proceed after you review research and click Continue (when match is verified).</li>
           <li>Models must follow the style guide and use only validated source evidence.</li>
           <li>Runs time out after ~180 seconds; thin or placeholder output is rejected.</li>
         </ul>

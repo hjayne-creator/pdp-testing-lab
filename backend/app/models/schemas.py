@@ -15,6 +15,41 @@ class StepConfig(BaseModel):
 class RunRequest(BaseModel):
     manufacturer_name: str
     manufacturer_product_number: str
+    product_family_hint: str = ""
+    style_guide_text: str
+    style_guide_filename: str = ""
+    step1: StepConfig
+    step2: StepConfig
+    step3: StepConfig
+
+
+class ResearchRequest(BaseModel):
+    manufacturer_name: str
+    manufacturer_product_number: str
+    product_family_hint: str = ""
+
+
+class ResearchPreviewResponse(BaseModel):
+    research_session_id: str
+    status: Literal["ready", "incomplete"]
+    research_tier: str
+    research_tier_reason: str
+    match_verified: bool
+    incomplete_reason: str | None = None
+    manufacturer_name: str
+    manufacturer_product_number: str
+    product_family_hint: str = ""
+    sources: list["SourceRecord"] = Field(default_factory=list)
+    evidence_text: str = ""
+    cost_lines: list["CostLineItem"] = Field(default_factory=list)
+    total_cost_usd: float = 0.0
+    runtime_lines: list["RuntimeLineItem"] = Field(default_factory=list)
+    total_runtime_ms: int = 0
+    audit: dict[str, Any] = Field(default_factory=dict)
+
+
+class RunContinueRequest(BaseModel):
+    research_session_id: str
     style_guide_text: str
     style_guide_filename: str = ""
     step1: StepConfig
@@ -45,6 +80,9 @@ class SourceRecord(BaseModel):
     tier: str
     domain: str
     exact_mpn_found: bool
+    exact_manufacturer_match: bool = False
+    family_match_found: bool = False
+    competitor_match_found: bool = False
     scrape_ok: bool
     error: str | None = None
 
@@ -69,6 +107,7 @@ class RunResult(BaseModel):
 class LabSettingsResponse(BaseModel):
     manufacturer_name: str
     manufacturer_product_number: str
+    product_family_hint: str = ""
     style_guide_filename: str
     style_guide_text: str
     step1_name: str
@@ -85,6 +124,7 @@ class LabSettingsResponse(BaseModel):
 class LabSettingsUpdate(BaseModel):
     manufacturer_name: str | None = None
     manufacturer_product_number: str | None = None
+    product_family_hint: str | None = None
     style_guide_filename: str | None = None
     style_guide_text: str | None = None
     step1_name: str | None = None
